@@ -16,7 +16,7 @@ import Camera
 import Matrix
 import Frustum
 import BSP
-import Data.HashTable
+import Data.HashTable.IO
 import Visibility
 import TextureFonts
 
@@ -125,7 +125,7 @@ renderObjects camRef mdels frust mp oos
 
 renderGun :: Camera -> HashTable String Model -> IO()
 renderGun cam mdels = do
-   Just weapon <- Data.HashTable.lookup mdels "railgun"
+   Just weapon <- Data.HashTable.IO.lookup mdels "railgun"
    let (x,y,z)    = cpos cam
    let (vx,vy,vz) = viewPos cam
    unsafePreservingMatrix $ do
@@ -248,7 +248,7 @@ renderEnemy camRef mdels frust bspmap (OOSAICube {oosOldCubePos = (x,y,z),
                            unsafePreservingMatrix $ do
                                  lineWidth $= 5.0
                                  translate (vector3' x y z)
-                                 Just model <- Data.HashTable.lookup mdels name
+                                 Just model <- Data.HashTable.IO.lookup mdels name
                                  writeIORef (pitch model)
                                     (Just $ do
                                                     cullFace $=  Nothing

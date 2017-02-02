@@ -50,7 +50,7 @@ data-files:          README,
      tga/textures/gothic_floor/q1metal7_99.tga
      tga/textures/gothic_floor/largerblock3b3.tga,
      tga/textures/gothic_floor/largerblock3b3dim.tga
-     tga/textures/e7/e7brickfloor01.tga, 
+     tga/textures/e7/e7brickfloor01.tga,
      tga/textures/e7/e7bmtrim.tga
      tga/textures/e7/e7bricks01.tga,
      tga/textures/e7/e7sbrickfloor.tga
@@ -83,7 +83,7 @@ data-files:          README,
 
 Executable frag
    Main-is:             Main.hs
-   Build-Depends:       base==4.*, GLUT, OpenGL>=2.0, array, random
+   Build-Depends:       base==4.*, GLUT, OpenGL>=2.0, array, random,hashtables,hashable,Yampa,mtl,deepseq
    Hs-source-dirs:      src
    Ghc-options:         -O2 -funbox-strict-fields -fvia-C -optc-O2
    Extensions:          BangPatterns,

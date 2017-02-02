@@ -50,10 +50,9 @@ module PhysicalDimensions (
     bearingToHeading,   -- :: Bearing -> Heading
     headingToBearing    -- :: Heading -> Bearing
 ) where
-
-import AFRP (Time, DTime)
-import AFRPMiscellany (fMod)
-import AFRPGeometry (Vector2, Vector3, Point2, Point3)
+import FRP.Yampa (Time,DTime)
+import FRP.Yampa.Miscellany(fMod)
+import FRP.Yampa.Geometry(Vector2,Vector3,Point2,Point3)
 
 
 -- Many of the physical dimensions below are related to time, and variables
@@ -110,8 +109,9 @@ type Acceleration3 = Vector3 Acceleration               -- [m/s^2]
 
 -- The resulting angle is in the interval [-pi, pi).
 normalizeAngle :: Angle -> Angle
-normalizeAngle d = fMod (d + pi) (2 * pi) - pi
+normalizeAngle d = fMod' (d + pi) (2 * pi) - pi
 
+fMod' x y  = x - fromInteger (floor (x/y)) * y
 -- The resulting heading is in the interval [-pi, pi).
 normalizeHeading :: Heading -> Heading
 normalizeHeading =  normalizeAngle
@@ -123,8 +123,8 @@ normalizeHeading =  normalizeAngle
 
 -- The resulting heading is in the interval [-pi, pi).
 bearingToHeading :: Bearing -> Heading
-bearingToHeading b = (fMod (270 - b) 360 - 180) * pi / 180
+bearingToHeading b = (fMod' (270 - b) 360 - 180) * pi / 180
 
 -- The resulting bearing is in the interval [0, 360).
 headingToBearing :: Heading -> Bearing
-headingToBearing d = fMod (90 - d * 180 / pi) 360
+headingToBearing d = fMod' (90 - d * 180 / pi) 360

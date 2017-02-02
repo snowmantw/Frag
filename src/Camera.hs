@@ -1,4 +1,4 @@
-{-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE BangPatterns,DeriveGeneric,DeriveAnyClass #-}
 
 -- Camera.hs; Mun Hon Cheong (mhch295@cse.unsw.edu.au) 2005
 
@@ -7,14 +7,15 @@
 module Camera where
 
 import Matrix
-import qualified AFRPGeometry as P
+import qualified FRP.Yampa.Geometry as P
 import PhysicalDimensions
 import Graphics.UI.GLUT
-
+import Control.DeepSeq
+import GHC.Generics
 data Camera = Camera {cpos      :: !(Double,Double,Double),
                       viewPos   :: !(Double,Double,Double),
                       upVec     :: !(Double,Double,Double)
-                     } deriving (Show,Read)
+                     } deriving (Show,Read,NFData,Generic)
 
 -- initialise a camera
 initCamera ::(Real a) => (a, a, a)-> (a, a, a) -> (a, a, a) -> Camera
@@ -151,5 +152,3 @@ setViewPos vec cam =
    Camera {cpos    = (cpos cam),
            viewPos = vec,
            upVec   = (upVec cam)}
-
-
