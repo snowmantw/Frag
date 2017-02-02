@@ -14,9 +14,9 @@ import Data.IORef
 import Data.Maybe
 import Control.Monad
 import qualified HGL as HGL
-import AFRP
-import AFRPInternals
-import AFRPForceable
+import FRP.Yampa
+import FRP.Yampa.Internals
+--import FRP.Yampa.Forceable
 import Game
 import Parser
 import Object
@@ -25,13 +25,13 @@ import Camera
 import System.Exit (ExitCode(..), exitWith)
 import Matrix
 import MD3
-import Data.HashTable
+import Data.HashTable.IO as H hiding (mapM_)
 import Frustum
 import Data.List (find)
 import Textures
 import MapCfg
 import Render
-
+import Control.DeepSeq
 msInterval :: Int
 msInterval = 16
 
@@ -65,18 +65,18 @@ printUsage n = do putStrLn $ "Usage: "   ++ n ++ " <level>"
 createAWindow :: String -> String -> IO ()
 createAWindow windowName level = do
    initialDisplayMode $= [WithDepthBuffer, DoubleBuffered, RGBAMode]
-   drawBuffer             $= BackBuffers
-   initialWindowSize  $= (Size 640 480)
+   drawBuffer         $= BackBuffers
+   initialWindowSize  $= Size 640 480
    createWindow windowName
    clear [ColorBuffer]
-   viewport               $= ((Position 0 0), Size 640 480)
-   matrixMode             $= Projection
+   viewport           $=  (Position 0 0, Size 640 480)
+   matrixMode         $= Projection
    loadIdentity
    perspective 70.0 (640/480) 10.0  4000.0
    matrixMode             $= Modelview 0
    loadIdentity
    depthFunc              $= Just Less
-   texture Texture2D  $=  Enabled
+   texture Texture2D      $=  Enabled
    cullFace               $= Just Front
    cursor                 $= None
 
@@ -84,7 +84,7 @@ createAWindow windowName level = do
    iobjs <- readMapCfg (level ++ ".cfg")
 
    let cam = initCamera (80::Int,61::Int,60::Int) (80::Int,611::Int,59::Int) (0::Int,1::Int,0::Int)
-   camRef <- newIORef(cam)
+   camRef <- newIORef cam
 
    --read the BSP files and player models specified in the *.med files
    (mapRef,modls) <- readMapMedia (level ++ ".med")
@@ -100,32 +100,31 @@ createAWindow windowName level = do
    numbase <- buildBigNums
 
    --create a hashmap  for textures
-   texs <- fromList hashString []
+   texs <- fromList  []
 
    --create the crosshair
    crosshair <- getAndCreateTexture "crosshaira"
    insert texs "crosshair" crosshair
 
    --set up the variables needed by our callbacks and game loop
-   tme            <- get elapsedTime
-   lasttime        <- newIORef(tme)
-   lastDTime       <- newIORef(tme)
-   lastDTime2      <- newIORef(tme)
-   fpsc1                   <- newIORef(0,0)
-   fps1            <- newIORef(0,0,0)
-   newIORef(0::Int)
-   _      <- newIORef(tme)
+   tme             <- get elapsedTime
+   lasttime        <- newIORef tme
+   lastDTime       <- newIORef tme
+   lastDTime2      <- newIORef tme
+   fpsc1           <- newIORef (0,0)
+   fps1            <- newIORef (0,0,0)
+   newIORef (0::Int)
+   _               <- newIORef tme
    --hold new keyboard input
-   newInput        <- newIORef(Nothing)
-   inpState        <- newIORef (False)
+   newInput        <- newIORef Nothing
+   inpState        <- newIORef  False
    --hold the new mouse input
-   newMouseInput  <- newIORef(Nothing)
+   newMouseInput   <- newIORef Nothing
    --lock the mouse or not
-   lck             <- newIORef(True)
-   (_, _)       <- getWinInput
-                                    (lasttime, (newInput,newMouseInput)) inpState True tme
-   hasReact        <- newIORef(False)
-   mp             <- readIORef mapRef
+   lck             <- newIORef True
+   (_, _)          <- getWinInput (lasttime, (newInput,newMouseInput)) inpState True tme
+   hasReact        <- newIORef False
+   mp              <- readIORef mapRef
 
    let gd = GameData {
           gamemap        = mapRef,
@@ -140,7 +139,7 @@ createAWindow windowName level = do
           lock           = lck,
           fpsc           = fpsc1,
           fpss           = fps1,
-          nems           = ((length objs)-1)
+          nems           = length objs - 1
    }
 
 
@@ -148,7 +147,7 @@ createAWindow windowName level = do
          reactInit
             (initr lasttime (newInput,newMouseInput) inpState)
             (actuate gd)
-            (repeatedly (0.016) () &&&(parseWinInput >>> game mp objs))
+            (repeatedly 0.016 () &&&(parseWinInput >>> game mp objs))
 
 
    --set up the callbacks
@@ -175,7 +174,8 @@ createAWindow windowName level = do
 actuate :: GameData -> ReactHandle a b ->
    Bool -> (Event (), [ObsObjState]) -> IO Bool
 actuate  gd _ _ (e, noos) = do
-   when (force (noos) `seq` isEvent e)
+   --when (force (noos) `deepseq` isEvent e)
+   when (noos `deepseq` isEvent e)
         (render gd noos)
    return False
 
@@ -214,7 +214,7 @@ render gd oos = do
   _ <- readIORef (lastDrawTime2 gd)
   _ <- readIORef (hasReacted gd)
 
-  --case (((realToFrac (time - lastTime2))/1000) <= (1/60)) of
+--  case (((realToFrac (time - lastTime))/1000) <= (1/60)) of
   case (True) of
         True -> do
                     -- initial setup
@@ -307,7 +307,7 @@ mouseMotion newInput newCursorPos = do
          _          -> writeIORef newInput (Just MouseMove {pos=newCursorPos})
 
 
-dragMotion :: IORef(OGLInput) -> MotionCallback
+dragMotion :: IORef OGLInput  -> MotionCallback
 dragMotion newInput newCursorPos = do
    lst <- readIORef newInput
    case lst of
@@ -315,9 +315,9 @@ dragMotion newInput newCursorPos = do
          _          -> writeIORef newInput (Just MouseMove {pos=newCursorPos})
 
 
-idle :: IORef(Int) -> (IORef(OGLInput),IORef(OGLInput)) ->IORef(Bool) ->
-  (Maybe TextureObject,DisplayList) -> (IORef(Bool)) ->
-        ReactHandle (WinInput,WinInput) (Event (), ([Object.ObsObjState])) -> IO()
+idle :: IORef Int -> (IORef OGLInput,IORef OGLInput ) ->IORef Bool  ->
+  (Maybe TextureObject,DisplayList) ->  IORef Bool   ->
+        ReactHandle (WinInput,WinInput) (Event (),  [Object.ObsObjState]) -> IO()
 idle lasttime newInput hasreacted _ inputState rh = do
    lTime <- readIORef lasttime
    currenttime <- get elapsedTime
@@ -422,5 +422,3 @@ filter a b =
          Just(a)
    else
          Nothing
-
-

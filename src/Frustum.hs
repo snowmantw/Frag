@@ -15,10 +15,10 @@ type FPlane =  (Double, Double, Double, Double)
 type Frustum = (FPlane,FPlane,FPlane,FPlane,FPlane,FPlane)
 
 
-normalisePlane :: FPlane -> IO FPlane
-normalisePlane (x,y,z,d) = do
+normalisePlane :: FPlane -> FPlane
+normalisePlane (x,y,z,d) =
    let reciMag = (1/(sqrt(x*x+y*y+z*z)))
-   return (x*reciMag, y*reciMag, z*reciMag, d*reciMag)
+   in (x*reciMag, y*reciMag, z*reciMag, d*reciMag)
 
 
 -- gets the frustum from the current view
@@ -88,12 +88,12 @@ getFrustum = do
 
    let toFrac (a,b,c,d) = (realToFrac a, realToFrac b, realToFrac c, realToFrac d)
 
-   rightPlane  <- normalisePlane $ toFrac $ (rightX ,rightY ,rightZ ,rightD)
-   leftPlane   <- normalisePlane $ toFrac $ (leftX  ,leftY  ,leftZ  ,leftD)
-   bottomPlane <- normalisePlane $ toFrac $ (bottomX,bottomY,bottomZ,bottomD)
-   topPlane    <- normalisePlane $ toFrac $ (topX   ,topY   ,topZ   ,topD)
-   backPlane   <- normalisePlane $ toFrac $ (backX  ,backY  ,backZ  ,backD)
-   frontPlane  <- normalisePlane $ toFrac $ (frontX ,frontY ,frontZ,frontD)
+   let rightPlane  = normalisePlane $ toFrac $ (rightX ,rightY ,rightZ ,rightD)
+   let leftPlane   = normalisePlane $ toFrac $ (leftX  ,leftY  ,leftZ  ,leftD)
+   let bottomPlane = normalisePlane $ toFrac $ (bottomX,bottomY,bottomZ,bottomD)
+   let topPlane    = normalisePlane $ toFrac $ (topX   ,topY   ,topZ   ,topD)
+   let backPlane   = normalisePlane $ toFrac $ (backX  ,backY  ,backZ  ,backD)
+   let frontPlane  = normalisePlane $ toFrac $ (frontX ,frontY ,frontZ,frontD)
 
    return (rightPlane,leftPlane,bottomPlane,topPlane,backPlane,frontPlane)
 
@@ -119,4 +119,3 @@ boxInFrustum (a,b,c,d,e,f) mn mx
      || not(test d) || not(test e) || not(test f) = False
    | otherwise = True
    where test = testBox mn mx
-

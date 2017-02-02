@@ -9,21 +9,22 @@ reads the level configuration files and map media files
 
 module MapCfg where
 
-import BSP
-import Camera
-import Control.Exception ( bracket )
-import Data.HashTable (HashTable,lookup,insert,fromList,hashString)
-import Data.IORef
-import Data.List (find)
-import Data.Maybe
-import IdentityList
-import MD3
-import Object
-import Object
-import ObjectBehavior
-import Prelude
-import System.IO hiding (withBinaryFile)
+import           BSP
+import           Camera
+import           Control.Exception         (bracket)
+import           Data.IORef
+import           Data.List                 (find)
+import qualified Data.HashTable.IO as H
+import           Data.Maybe
+import           IdentityList
+import           MD3
+import           Object
+import           Object
+import           ObjectBehavior
+import           Prelude
+import           System.IO                 hiding (withBinaryFile)
 
+type HashTable k v = H.BasicHashTable k v
 
 data ObjectConstructor =
    ConsCamera Camera |
@@ -41,14 +42,14 @@ readMapCfg filepath = withBinaryFile filepath $ \handle -> do
    let objects  = map lines2ObjectCons lnes
    return $ map objectCons2IntermediateObjects objects
 
-readMapMedia :: FilePath -> IO (IORef BSPMap,(HashTable String Model))
+readMapMedia :: FilePath -> IO (IORef BSPMap,HashTable String Model)
 readMapMedia filepath = withBinaryFile filepath $ \handle -> do
    lnes <- readLines handle
    print lnes
    let levelModels = lines2LevelModels lnes
    let (MMap lvlName) = head levelModels
    bsp <- readBSP lvlName
-   hash <- fromList hashString []
+   hash <-  H.fromList  []
    mapM_ (readLevelModels hash) (tail levelModels)
    return (bsp,hash)
 
@@ -63,22 +64,20 @@ readLevelModels hash (MPlayerModel name weaponName) =
 getModel :: HashTable String Model -> String -> String -> IO ()
 getModel hash name weaponName = do
    getWeaponModel hash weaponName
-   Just weapon <- Data.HashTable.lookup hash weaponName
+   Just weapon <- H.lookup hash weaponName
    model       <- readModel name weapon
-   insert hash name model
-
+   H.insert  hash name model
 
 getWeaponModel :: HashTable String Model -> String -> IO ()
 getWeaponModel hash name = do
-   model <- Data.HashTable.lookup hash name
+   model <-  H.lookup hash name
    case model of
       Just _ -> return ()
       Nothing -> do
                 weaponModel <-
                   readWeaponModel
                     ("tga/models/weapons/"++name++".md3") ("tga/models/weapons/"++name++".shader")
-                insert hash name weaponModel
-
+                H.insert hash name weaponModel
 
 readLines :: Handle -> IO [String]
 readLines handle = do
@@ -112,14 +111,14 @@ lines2ObjectCons str
 
 
 lines2LevelModels :: [String] -> [LevelModel]
-lines2LevelModels [] = []
-lines2LevelModels (str:strs) = (read str): (lines2LevelModels  strs)
+lines2LevelModels  = map read 
+--lines2LevelModels (str:strs) = (read str): (lines2LevelModels  strs)
 
 
 objectCons2IntermediateObjects :: ObjectConstructor -> IntermediateObject
 objectCons2IntermediateObjects (ConsCamera cam) =
    ICamera (camera cam)
-objectCons2IntermediateObjects c@(ConsAICube {}) =
+objectCons2IntermediateObjects c@ConsAICube {} =
    IAICube
      (aicube (startPosition c) (size c) (wayPoints c)(modlName c)) (modlName c)
 
@@ -148,6 +147,3 @@ findModelAnim name anms = (ua,la)
    where
       (_,ua,la) =
           fromJust $ find (\(x,_,_)->(x==name)) anms
-
-
-

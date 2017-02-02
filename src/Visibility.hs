@@ -17,6 +17,7 @@ import Matrix (Vec3,
                vectorMult,
                vectorSub)
 import BSP -- (bsPlaneNorm, bsPlaneDist, numOfBrushSides, textureType, brushside, BSPBrushSide(..), tree, planeNormal, dist, Tree(..))
+--import BSP( BSPBrushSide(..), Tree(..),BSPMap(..),BSPBrush(..),BSPNode(..),BSPLeaf(..))
 import Collision(CollisionType(..))
 
 
@@ -29,7 +30,7 @@ getOffset (SphereT rad) _ = rad
 
 getBoxOffs :: Vec3 -> Vec3 -> Double
 getBoxOffs (x,y,z) (x1,y1,z1) =
-   (abs (x*x1))+(abs (y*y1))+(abs (z*z1))
+   abs (x*x1) + abs (y*y1) + abs (z*z1)
 
 
 -------------------------------------------------------------------------------
@@ -37,30 +38,26 @@ getBoxOffs (x,y,z) (x1,y1,z1) =
 
 aiVisTest :: BSPMap -> Vec3 -> Double -> Vec3 -> Int -> Bool
 aiVisTest bsp currentPos angle targetPos range =
-  case (fieldTest currentPos angle targetPos range) of
-     False -> False
-     _ -> rayTest bsp currentPos targetPos
+  fieldTest currentPos angle targetPos range && rayTest bsp currentPos targetPos
 
 
 -- test if the objct lies wihitn the field of view
 fieldTest :: (Double,Double,Double) ->Double ->
   (Double,Double,Double) -> Int -> Bool
 fieldTest  (x,y,z) angle (ox,oy,oz) range =
-  (distance < (realToFrac range)  &&
+  (distance < realToFrac range  &&
   (horizangle <= 30) &&
-  (abs verticalangle) <= 60 ) || distance < 300
+  abs verticalangle <= 60 ) || distance < 300
   where
     distance = sqrt (((x-ox)^(2 :: Int))+((y-oy)^(2 :: Int))+((z-oz)^(2 :: Int)))
     horizanglei =
        let ha=acos $ dotProd (normalise $ vectorSub (ox,0,oz) (x,0,z)) (1,0,0)
-       in case (oz > z) of
-          False -> (ha*180/pi)
-          True  -> (360 - (ha*180/pi))
+       in if oz > z  then  360 - (ha*180/pi) else  ha*180/pi
     horizangle =
        min (abs (horizanglei - angle))  (abs (horizanglei - (angle + 360)))
     verticalangle =
        let va=acos $ dotProd (normalise $ vectorSub (ox,oy,oz) (x,y,z)) (0,1,0)
-       in ((va*180/pi)-90)
+       in (va*180/pi)-90
 
 
 -- fires rays to the target to determine visibility
@@ -86,11 +83,11 @@ rayTest bsp (x,y,z) vec2@(_,_,_) =
 
 
 createSphere :: Double ->  CollisionType
-createSphere rad = SphereT rad
+createSphere  = SphereT
 
 
 clipRay2 :: BSPMap -> Vec3 -> Vec3 ->  Vec3 -> (Vec3, Bool)
-clipRay2 mp pos oldpos (_,_,_) =
+clipRay2 mp pos oldpos _ =
   let (colPos,collided,_,_) = traceo (createSphere 0) mp oldpos pos
   in (colPos, collided)
 
@@ -98,14 +95,14 @@ clipRay2 mp pos oldpos (_,_,_) =
 traceo ::  CollisionType -> BSPMap ->
    Vec3 -> Vec3 -> (Vec3,Bool,Bool,Bool)
 traceo cType mp start end
-  | (newRatio /= 1.0) =
+  | newRatio /= 1.0 =
         (vectorAdd start
             (vectorMult (vectorSub end start) newRatio),hasCol,step,grounded)
   | otherwise = (end,False,step,grounded)
   where
-     (hasCol,step,grounded,newRatio,(_,_,_)) =
-         fixCheck $ (checkNode cType (False,False,False,1.0, (0.0,0.0,0.0))
-            (tree mp) 0.0 1.0 start end)
+     (hasCol,step,grounded,newRatio,_) =
+         fixCheck $ checkNode cType (False,False,False,1.0, (0.0,0.0,0.0))
+            (tree mp) 0.0 1.0 start end
      fixCheck x =
         case x of
           (Just a) ->  a
@@ -144,7 +141,7 @@ checkBrush :: Vec3-> Vec3 -> CollisionType ->
 checkBrush _ _ _ [] = Just (False,False,False,0,(0,0,0))
 checkBrush start end cType (brush:brushes) =
      let res = checkBrush'  start end cType brush
-     in case (res) of
+     in case res of
          Just (True,_,_,_,_) -> res
          _ -> checkBrush start end cType brushes
 
@@ -152,16 +149,16 @@ checkBrush start end cType (brush:brushes) =
 checkBrush' :: Vec3-> Vec3 -> CollisionType ->
    BSPBrush -> Maybe (Bool,Bool,Bool,Double,Vec3)
 checkBrush'  start end cType brush
-     |((numOfBrushSides brush) > 0) && ((textureType brush)==1) =
+     |(numOfBrushSides brush > 0) && (textureType brush==1) =
        let colout =
              checkBrushSides start end
                 cType False False False False (-1.0)
-                   (1.0) (0,0,0) (brushSides brush)
+                   1.0 (0,0,0) (brushSides brush)
        in case colout of
           Just (out,collided,step,grounded,startR,endR,newNorm) ->
-              case (startR < endR && startR > -1  && out) of
-                 True -> Just (collided,step,grounded,fixRatio startR,newNorm)
-                 _    -> Nothing
+              if startR < endR && startR > -1  && out then
+                 Just (collided,step,grounded,fixRatio startR,newNorm)
+                 else Nothing
           _ -> Nothing
      |otherwise = Nothing
      where
@@ -172,7 +169,7 @@ checkBrush'  start end cType brush
 
 checkBrushSides ::  Vec3 -> Vec3 -> CollisionType-> Bool -> Bool ->
    Bool -> Bool -> Double -> Double -> Vec3 -> [BSPBrushSide] ->
-     (Maybe (Bool,Bool,Bool,Bool,Double,Double,Vec3))
+     Maybe (Bool,Bool,Bool,Bool,Double,Double,Vec3)
 checkBrushSides  (_,_,_) (_,_,_) _
   out collided step ground startR endR cNorm [] =
      Just (out,collided,step,ground,startR,endR,cNorm)
@@ -181,13 +178,13 @@ checkBrushSides  start@(x,_,z) end@(x1,_,z1) cType
      | startDist >  0 && endDist >  0 = Nothing
      | startDist <= 0 && endDist <= 0 = continue
      | startDist > endDist =
-           case (ratio1 > startR) of
+           case ratio1 > startR of
               True -> (checkBrushSides start end cType
                           checkout True mayStep grounded
                               ratio1 endR (bsPlaneNorm b) bs)
               _    -> continue
      | otherwise =
-           case (ratio2 < endR) of
+           case ratio2 < endR of
               True -> (checkBrushSides start end cType
                           checkout collided step ground
                               startR ratio2 cNorm bs)
@@ -197,7 +194,7 @@ checkBrushSides  start@(x,_,z) end@(x1,_,z1) cType
             | startDist > 0 = True
             | otherwise = out
         mayStep
-            | ((x /= x1 || z /= z1) && planey /= 1) = True
+            | (x /= x1 || z /= z1) && planey /= 1 = True
             | otherwise = step
         grounded
             | planey >= 0.2 = True
@@ -214,7 +211,7 @@ checkBrushSides  start@(x,_,z) end@(x1,_,z1) cType
 
 
 vDist :: Vec3 -> CollisionType -> Vec3 -> Double  ->  Double
-vDist vec box@(Box _ _ _) pnorm pdist =
+vDist vec box@Box{}  pnorm pdist =
    (dotProd (vectorAdd vec (getVOffs pnorm box)) pnorm) - pdist
 vDist vec (SphereT rad) pnorm pdist =
    (dotProd vec pnorm) - (pdist + rad)
@@ -319,4 +316,3 @@ getMiddleRatio startRatio endRatio ratio =
 getHalfVec :: Vec3 -> Vec3 -> Double -> Vec3
 getHalfVec start end ratio =
        vectorAdd start (mapTup (ratio*) (vectorSub end start))
-

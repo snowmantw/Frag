@@ -1,7 +1,7 @@
 module Game where
 
-import AFRP
-import AFRPInternals (Event(..))
+import FRP.Yampa
+import FRP.Yampa.Internals (Event(..))
 import Collision
 import Raybox
 import BSP
@@ -12,20 +12,23 @@ import Parser
 import Camera
 import Matrix
 import Visibility (aiVisTest)
+import Control.Monad.State
+
+newtype Sim a b = Sim( a-> (b,State a b))
 
 game :: BSPMap -> [ILKey -> Object] -> SF GameInput [ObsObjState]
 game bspmap objs
-  = (loop
+  = loop
        (game'
-          (case (listToILA $ objs) of
+          (case listToILA  objs of
                x -> x)
           bspmap
           >>> arr (\ oos -> (oos, oos)))
        >>>
        arr
          (\ oos ->
-            case (map ooObsObjState (elemsIL oos)) of
-                y -> y))
+            case map ooObsObjState (elemsIL oos) of
+                y -> y)
 
 game' ::
       IL Object -> BSPMap -> SF (GameInput, IL ObjOutput) (IL ObjOutput)

@@ -1,4 +1,4 @@
-{-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE BangPatterns,DeriveGeneric,DeriveAnyClass #-}
 
 -- Object.hs; Mun Hon Cheong (mhch295@cse.unsw.edu.au) 2005
 
@@ -14,13 +14,14 @@ module Object (
     isCamera,       -- :: ObsObjState -> Bool
 ) where
 
-import AFRP (SF, Event)
-import AFRPForceable (Forceable(), force)
+import FRP.Yampa (SF, Event)
+--import FRP.Yampa.Forceable (Forceable(),force)
+import Control.DeepSeq
 import Camera
 import IdentityList
 import MD3 (AnimState)
 import Parser (GameInput)
-
+import GHC.Generics(Generic)
 
 type Object = SF ObjInput ObjOutput
 
@@ -84,25 +85,24 @@ data ObsObjState =
           modelName     :: !String,
           target                :: !(Double,Double,Double),
           fade          :: !Float
-         }
+         } deriving (Generic,NFData)
 
-instance Forceable ObsObjState where
-    -- If non-strict fields: oosNonStrict1 obj `seq` ... `seq` obj
-    force obj = obj
+--instance NFData ObsObjState
+--     -- If non-strict fields: oosNonStrict1 obj `seq` ... `seq` obj
+--     force obj = obj
 
 isRay :: ObsObjState -> Bool
-isRay (OOSRay {}) = True
-isRay _            = False
+isRay OOSRay {} = True
+isRay _           = False
 
 isCamera :: ObsObjState -> Bool
-isCamera (OOSCamera {}) = True
-isCamera _                      = False
+isCamera OOSCamera {} = True
+isCamera _              = False
 
 isAICube :: ObsObjState -> Bool
-isAICube (OOSAICube {}) = True
-isAICube _                 = False
+isAICube OOSAICube {} = True
+isAICube _              = False
 
 isProjectile :: ObsObjState -> Bool
-isProjectile (OOSProjectile {}) = True
+isProjectile OOSProjectile {} = True
 isProjectile _            = False
-

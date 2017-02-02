@@ -12,9 +12,9 @@ import Graphics.UI.GLUT
 import Textures
 import Data.Maybe
 import Data.Char
-import Data.HashTable
+import qualified Data.HashTable.IO as H
 
-
+type HashTable k v = H.BasicHashTable k v
 -- build a display list for the fonts
 buildFonts :: IO(Maybe TextureObject,DisplayList)
 buildFonts = do
@@ -130,7 +130,7 @@ setUpOrtho func = do
 -- just renders the crosshair
 renderCrosshair :: HashTable String (Maybe TextureObject) -> IO()
 renderCrosshair texs = do
-   Just  crosshairTex <- Data.HashTable.lookup texs "crosshair"
+   Just  crosshairTex <-H.lookup texs "crosshair"
    texture Texture2D $= Enabled
    textureBinding Texture2D $= crosshairTex
    unsafePreservingMatrix $ do
@@ -151,6 +151,3 @@ renderCrosshair texs = do
 
 toDisplayList ::  GLuint -> Char -> DisplayList
 toDisplayList _ c = DisplayList (fromIntegral (ord c) - 31)
-
-
-

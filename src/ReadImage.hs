@@ -29,8 +29,8 @@ word32BigEndianToGLsizei :: Word32BigEndian -> GLsizei
 word32BigEndianToGLsizei (Word32BigEndian x) = fromIntegral x
 
 instance Storable Word32BigEndian where
-   sizeOf ~(Word32BigEndian x) = sizeOf x
-   alignment ~(Word32BigEndian x) = alignment x
+   sizeOf (Word32BigEndian x) = sizeOf x
+   alignment (Word32BigEndian x) = alignment x
    peek ptr = do
       let numBytes = sizeOf (undefined :: Word32BigEndian)
       bytes <- mapM (peekByteOff ptr) [ 0 ..  numBytes - 1 ] :: IO [Word8]
@@ -43,7 +43,7 @@ readGLsizei :: Handle -> IO GLsizei
 readGLsizei handle =
    alloca $ \buf -> do
       hGetBufFully handle buf (sizeOf (undefined :: Word32BigEndian))
-      liftM word32BigEndianToGLsizei $ peek buf
+      word32BigEndianToGLsizei <$> peek buf
 
 -- A handy variant of hGetBuf with additional error checking
 hGetBufFully :: Handle -> Ptr a -> Int -> IO ()
